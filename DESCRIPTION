@@ -1,0 +1,20 @@
+Package: matchForecast
+Type: Package
+Title: Match Forecast
+Version: 0.1
+Authors@R: person("Rok", "Fortuna", email = "fortuna.rok@gmail.com",
+  role = c("aut", "cre"))
+Description: Framework for performing two level modeling to forecast outcome of matches. 
+  It takes into account the uncertainty of instnace attributes by modeling them and performing bagging of ML models on sampled datasets.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+Depends:
+    data.table (>= 1.10.4-3),
+    digest (>= 0.6.15),
+    mvtnorm (>= 1.0.7),
+    MCMCpack (>= 1.4.3)
+RoxygenNote: 6.0.1
+Suggests: knitr,
+    rmarkdown
+VignetteBuilder: knitr
