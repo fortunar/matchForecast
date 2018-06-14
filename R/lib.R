@@ -9,11 +9,8 @@ get_measurement_colnames <- function(data) {
   for (colname in colnames(data)) {
     if (substr(colname, 1, 2) != "ID") {
       split <- strsplit(colname, "_")[[1]]
-      if (length(split) > 2) {
-        stop("Error because of the naming of a column.")
-      }
-      if (length(split) == 2 && !is.na(as.numeric(split[[2]]))) {
-        cols <- c(cols, split[[1]])
+      if (!is.na(suppressWarnings(as.numeric(split[[length(split)]])))) {
+        cols <- c(cols, paste(split[1:(length(split) - 1)], collapse = '_'))
       }
     }
   }

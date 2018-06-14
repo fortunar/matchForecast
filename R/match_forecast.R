@@ -371,7 +371,7 @@ model_inputs_row <- function(data, input_model_specification, num_models, prior 
 
   models <- list()
   # Support for custom models
-  if (typeof(input_model_specification) == "closure") {
+  if (typeof(input_model_specification) == 'closure') {
     return(input_model_specification(data, num_models))
   }
 
@@ -380,13 +380,15 @@ model_inputs_row <- function(data, input_model_specification, num_models, prior 
   if (!is.list(input_model_specification) || is.null(input_model_specification$dependent) || !input_model_specification$dependent) {
     column_models <- list()
     for (colname in colnames(data)) {
-      if (typeof(input_model_specification) == "character") {
+      if (typeof(input_model_specification) == 'character') {
         if (is.null(supported_models[[input_model_specification]])) {
           stop(paste(input_model_specification, "model not supported.", "Supported models are:", toString(names(supported_models))))
         }
         column_models[[colname]] <- supported_models[[input_model_specification]](data[[colname]], num_models, prior[[colname]])
       } else {
         if (is.null(input_model_specification[[colname]])) {
+          stop(paste("Model for attribute", colname, "not specified."))
+        } else if (is.null(supported_models[[input_model_specification[[colname]]]]))  {
           stop(paste(input_model_specification[[colname]], "model not supported.", "Supported models are:", toString(names(supported_models))))
         }
         column_models[[colname]] <- supported_models[[input_model_specification[[colname]]]](data[[colname]], num_models, prior[[colname]])
