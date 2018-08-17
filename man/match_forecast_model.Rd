@@ -9,13 +9,13 @@ match_forecast_model(data, input_model_specification, num_models,
   report_time = F)
 }
 \arguments{
-\item{data}{\code{data.frame} or \code{data.table} in \strong{event-instance}
-  format required by this package (also see details below). Columns have to
-  include instance ID's in the format: \strong{ID_<number>} and attributes in
+\item{data}{\code{data.frame} in \strong{match-objects}
+  format required by this package. Columns have to
+  include object ID's in the format: \strong{ID_<number>} and attributes in
   the format \strong{<attr_name>_<number>}. <number> suffix connects
-  instances to attributes. The suffixed number of corresponding instance and
+  objects to attributes. The suffixed number of corresponding object and
   attributes should be the same. Column for the outcome (dependant variable)
-  of the event needs to be denoted with \strong{y}. It can also include an
+  of the match should be denoted with \strong{y}. It can also include an
   attribute \strong{TIME}.
 
   An example of the columns for basketball data:
@@ -26,11 +26,11 @@ match_forecast_model(data, input_model_specification, num_models,
   attributes of the home team. ID_2 refers to the ID of away team and P2M_2, P3M_2 to its
   attributes. y is the outcome of the match.}
 
-\item{input_model_specification}{Specifies the parametric assumptions of the
-  attributes. We can model attributes of instances as independent with uivariate models or as
+\item{input_model_specification}{Specifies the parametric assumptions of object
+  attributes. We can model attributes of objects as independent with uivariate models or as
   dependent with multivariate models.
 
- Currently four univariate Bayesian models are supported: \itemize{
+ Four univariate Bayesian models are supported out of the box: \itemize{
   \item Poisson (Poisson-Gamma model), appropriate for count data,
   see \code{\link{input_model_poisson}}
   \item Bernoulli (Bernoulli-Beta model), appropriate for binary data,
@@ -44,23 +44,23 @@ match_forecast_model(data, input_model_specification, num_models,
   One multivariate Bayesian model is supported:
   Multivariate normal model with inverse Wishart prior for covariance matrix
   (see \code{\link{input_model_mvnormal_iw}}). It is appropriate for jointly modeling numeric
-  attributes of instances. A custom model can also be used if a function is passed as
+  attributes of objects. A custom model can also be used if a function is passed as
    \code{input_model_specification} parameter. See the source code of other input models
    for an example of how to write a custom model.
 
   \strong{How to invoke the models described above?}
   For independent Bayesian models a string or a list should be passed in as
   \code{input_model_specification} parameter. If it is a string, all attributes have the
-  same parametric assumption. If it is a list, the keys need to correspond to
+  same parametric assumption. If it is a list, the keys should correspond to
   columns (attributes) and values to parametric assumptions. If a list of
-  name value pairs is used, different attributes can have different
+  name-value pairs is used, different attributes can have different
   parametric assumptions. The strings corresponding to supported parametric assumptions described
   above are 'poisson', 'bernoulli', 'normal', 'normal_ig'. Multivariate normal model with
   inverse Wishart prior is invoked by passing in
   \code{input_model_specification = list(dependent = T, type = "mvnormal_iw")}.
   See examples below and input models linked above for more details.}
 
-\item{num_models}{Number of distributions to obtain per attribute. Also matches the
+\item{num_models}{Number of models (distributions) to obtain per attribute. Also matches the
 number of resulting bagged ML models, since each bagged model is obtained on
 one set of distributions.}
 
@@ -68,24 +68,26 @@ one set of distributions.}
 into actual features being fed into ML algorithm. For each of the parametric assumptions
 mentioned above mean transformation is supported out of the box. It is invoked by
 passing \code{transformation = "means"} as parameter. A custom function can also be
-passed in. In this case it gets called for every instance with a list of distributions
-that were fitted to instance attributes by the package. See the source code of
-\code{\link{transform_data}} for more information.}
+passed in. In this case it gets called for every object with a list of distributions
+that were fitted to object's attributes by the package. See the source code of
+\code{\link{object_model}} and \code{\link{transformation_means}} for more information.}
 
 \item{weighting}{Optional parameter. A function that uses the \strong{TIME} attribute if
-present to weight the prior events by importance when obtaining attribute
+present to weight the prior matches by importance when obtaining attribute
 distributions.}
 
-\item{get_model}{Function that takes as input a dataset generated by
-\code{transformation} function and returns a ML model built using this
-dataset. The ML model returned needs to support the standard predict()
-notation.}
+\item{get_model}{Function that should build a ML model on one of \code{num_models} datasets
+generated by the package. It receives match data with features of objects that are the output of
+\code{transformation} function. The ML model returned needs to support the standard predict()
+ notation.}
 
 \item{priors}{Optional parameter. Specifies conjugate priors for supported Bayesian models.
-List of lists, one for each instance. Keys in the outer list correspond to instance id's.
-The values in the outer list correspond to specifications of prior distributions of attributes.
-The values in the inner lists depend on the parametric assumption used. See the
-documentation of supported parametric models for details on how to specify priors.}
+List of lists, one for each object. Names in the outer list correspond to object ID's.
+The values in the outer lists are lists with names corresponding to attributes and values
+to specifications of parameters of attribute prior distributions. The values in the inner lists
+depend on the parametric assumption used. See the documentation of supported parametric assumptions
+(e.g. \code{\link{input_model_poisson}}) for details on how to specify priors and examples below
+on how to use them.}
 
 \item{report_time}{Boolean denoting whether to report the execution time. Default is \code{FALSE}.}
 }
@@ -93,11 +95,11 @@ documentation of supported parametric models for details on how to specify prior
 Structure of class \code{match_forecast_model} containing
   properties:
   \itemize{
-  \item models: list of length \code{num_models} with each entry being one of the bagged
-  models
-  \item data: data passed to input parameter (to be used to calculate distributions of
-  attributes of test instances
-  \item some other implicit parameters to avoid repetition
+  \item first_level_model: list with keys being instance ID's and values corresponding first level
+  object models
+  \item second_level_model: list of length \code{num_models} with each entry being one of the bagged
+  predictive models
+  \item some other implicit parameters (inspect the object for more info)
   }
 }
 \description{
@@ -112,7 +114,7 @@ For detailed explanation see the introduction vignette by running:
 }
 \examples{
 # Builds a logistic regression model on a single sampled train data set obtained
-# from instance models by applying a transformation function (e.g. means).
+# from object models by applying a transformation function (e.g. means)
 get_model <- function(data) {
   return(glm(y ~ ., family = binomial(link = "logit"), data = data))
 }
@@ -137,7 +139,7 @@ priors_example <- list(
 
 # Builds the Match Forecast Model
 mf_model <- match_forecast_model(
-  # Data frame in event-instance format
+  # Data frame in match-object format
   data = data_train,
   # Parametric assumption about attributes
   input_model_specification = "poisson",

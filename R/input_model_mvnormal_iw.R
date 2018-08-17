@@ -1,8 +1,8 @@
 #' input_model_mvnormal_iw
 #'
-#' Multivariate Normal - Inverse Wishart model. Fits \code{num_models} multivariate
-#' normal distributions to a data frame according to multivariate normal - inverse Wishart model.
-#' If prior is not passed to the function, classic multivariate normal model with sample covariance
+#' Multivariate Normal - Inverse Wishart model. Fits \code{num_models} Multivariate
+#' Normal distributions to a data frame according to Multivariate Normal - Inverse Wishart model.
+#' If prior is not passed to the function, classic Multivariate Normal model with sample covariance
 #' is used.
 #' @param data Data frame of events with attributes to model jointly.
 #' @param num_models Number of distributions to fit.
@@ -10,7 +10,7 @@
 #' contain entries 'mean' and 'sigma'. Inner list corresponding to entry 'mean'
 #' should specify parameters for the multivariate normal prior of the mean.
 #' It's entries should be 'mean' (vector) and 'sigma' (matrix) of the appropriate size.
-#' List corresponding to the outer list key 'sigma' should specify parameters for the inverse Wishart
+#' List corresponding to the outer list key 'sigma' should specify parameters for the Inverse Wishart
 #' prior of the covariance matrix. Keys in this list should be 'a' (scalar)
 #' and 'S' (matrix). For example:
 #' \code{list(mean = list(mean = .., sigma = ..), sigma = list(a = .., S = ..))},

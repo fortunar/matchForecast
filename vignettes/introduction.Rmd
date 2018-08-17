@@ -24,13 +24,13 @@ The package is applicable to problems where the attributes are uncertain (estima
 
 The use case will be described on the problem of forecasting basketball games. Prior to a match we want to forecast we have data of the team performance in past matches. These data include 2 point shots made, 3 point shots made, rebounds etc. For a new basketball match, we do not know how a team will perform, which is why we somehow need to estimate the attributes of the actual feature vectors that we feed into a ML algorithm. We might be tempted to take the mean values of performance data from past matches. However we obtain point estimates of the attributes which contain uncertainty. When we don't have a lot of prior games available mean estimates can lead to overconfidence and poor performance. This package models the data from past games with  distributions. Multiple predictive models are then bagged by training ML models on feature vectors obtained from fitted distributions.
 
-Let's generalize the use cases. Problems that this package is applicable to can be described by the notion of events and instances. Outcome of new events is what we want to predict and we want the algorithm to learn based on prior events. Instances are objects with attributes and participate in events. At each event one or multiple instances can participate. This package assumes instances have the same types of measured attributes. The attributes of participating instances in a past event are known and so is the outcome. For a new event we do not know the attributes or the outcome. We would like to estimate the unknown attributes of instances participating in the new event based on attributes from previous known events and predict the outcome.
+Let's generalize the use cases. Problems that this package can be used for have a specific data structure of matches and objects. Our goal is to predict the outcome of new matches and we want the algorithm to learn based on prior matches. Objects (e.g. teams) have attributes and participate in matches. One or multiple objects can participate in each match. This package assumes objects have the same types of measured attributes. The attributes of participating objects in past matches are known and so is the outcome. For a new event we do not know the attributes or the outcome. We need to estimate the unknown attributes and predict the outcome.
 
-# Input data: event-instance format
+# Input data: match-objects format
 
-The main input to this package are events in the form of a data frame. One event corresponds to one row in the data frame. Each event contains columns with measurements of features of participating instances. Each event can also contain a `TIME` attribute, which can be used to weight the importance of prior events for estimating the distributions.
+The main input to this package are matches in the form of a data frame. One match corresponds to one row in the data frame. Each match contains columns with measurements of attributes of participating objects. Each match can also contain a `TIME` attribute, which can be used to weight the importance of prior matches for estimating the distributions.
 
-Columns of event-instance formatted data frame include instance ID's in the format: `ID_<number>` and attributes in the format `<attr_name>_<number>`. `<number>` suffix connects instances to attributes. The suffixed number of corresponding instance and attributes should be the same. Column for the outcome (dependant variable) of the event should be denoted with `y`. 
+Columns of match-object formatted data frame include object ID's in the format: `ID_<number>` and attributes in the format `<attr_name>_<number>`. `<number>` suffix connects objects to attributes. The suffixed number of corresponding object and attributes should be the same. Column for the outcome (dependent variable) of the match should be denoted with `y`. 
 
 An example of the columns of the data for basketball:
 
@@ -42,7 +42,7 @@ An example of the columns of the data for basketball:
 In the basketball case ID_1 refers to ID of the home team and P2M_1, P3M_1 to the attributes of the home team. ID_2 refers to the ID of away team and P2M_2, P3M_2 to its attributes. y is the outcome of the match.
 
 ## How do we model attributes?
-We treat attributes of instances as random variables. Known measurements of an attribute are realizations of the corresponding random variable. For each random variable we compute multiple possible distributions using known prior measurements and a parametric assumption. Parametric assumption is our belief of how the variable is distributed. If a random variable is a count, a good guess is that it is Poisson distributed. Therefore in that case we can use the Poisson - Gamma Bayesian model to fit multiple Poisson distributions to the random variable. With supported Bayesian models we can also use priors. This package supports the following univariate Bayesian models out of the box: 
+We treat attributes of objects as random variables. Known measurements of an attribute are realizations of the corresponding random variable. For each random variable we compute multiple possible distributions using known prior measurements and a parametric assumption. Parametric assumption is our belief of how the variable is distributed. If a random variable is a count, a good guess is that it is Poisson distributed. Therefore in that case we can use the Poisson - Gamma Bayesian model to fit multiple Poisson distributions to the random variable. With supported Bayesian models we can also use priors. This package supports the following univariate Bayesian models out of the box: 
 
 * Poisson - gamma model for count attributes
 * Normal model with sample variance
@@ -54,7 +54,7 @@ One multivariate Bayesian model is also supported: Multivariate Normal - Inverse
 User can also use custom models (see examples for more information).
 
 ## How do we use the distributions we get from modeling attributes?
-The distributions we obtain from modeling attributes of instances are used to construct feature vectors that are fed into ML models. Any quantity derived from the distribution can be used: means, medians, quantiles etc. 
+The distributions we obtain from modeling attributes of objects are used to construct feature vectors that are fed into ML models. Any quantity derived from the distribution can be used: means, medians, quantiles etc. 
 
 # Usage
 ## Install the package:
@@ -66,7 +66,7 @@ Detailed documentation of all the parameters and use cases is available by insta
 ## Building the model - match_forecast_model()
 ```R
 # Function for obtaining a single instance of a ML model. In this case it builds a 
-# logistic regression model on data btained by applying a transformation 
+# logistic regression model on data obtained by applying a transformation 
 # function (in this case "means") on the distributions fitted to attributes.
 get_model <- function(data) {
   return(glm(y ~ ., family = binomial(link = "logit"), data = data))
@@ -93,7 +93,7 @@ priors_example <- list(
 
 # Builds the Match Forecast Model
 mf_model <- match_forecast_model(
-  # Data frame in event-instance format
+  # Data frame in match-object format
   data = data_train,
   # Parametric assumption about attributes - in this case we assume
   # all attributes are distributed by Poisson distribution
@@ -112,27 +112,23 @@ mf_model <- match_forecast_model(
 
 ```R
 # Predict function to act on a single bagged model and a single sampled test data set obtained
-# from instance models by applying a transformation function (e.g. means).
+# from object models by applying a transformation function (e.g. means).
 predict_fun <- function(model, data) {
   data$y <- NULL
   return(predict(model, newdata = data, type = "response"))
 }
 
-# This yields 100 * 30 predictions (for each bagged model and each transformed 
-# feature vector from the fitted distributions). It returns is a list of lists 
+# This yields 100 * 100 predictions. It returns a list of lists 
 # of predictions. Each prediction (list) contains fields:
 # - predictions: output of predict_fun passed to this method
-# - model: index of the bagged model (in this case 1-100)
-# - num_of_sample: index of the fitted distributions (in this case 1-30)
+# - idx_of_bagged_model: index of the bagged model (in this case 1-100)
+# - idx_of_test_set: index of test set generated by first level model (in this case 1-100)
 results <- predict(
   # The model of type 'match_forecast_model'
   mf_model,
   # Test data (data to predict): needs to include only participating 
-  # instance ID's
+  # object ID's
   data_new = data_new,
-  # How many distributions to fit to each attribute of an instance 
-  # in the test data
-  num_models = 30,
   predict_fun = predict_fun
 )
 
@@ -145,7 +141,7 @@ results <- predict(
 
 In the example above, we modeled all attributes using Poisson - Gamma model by passing setting  `input_model_specification =  'poisson'`. If we want to use different parametric assumptions for attributes we need to pass a list to `input_model_specification` with keys being column names and values strings representing parametric assumptions.
 
-Independent parametric assumptions and their corresponding strings:
+Parametric assumptions  (independent attributes) and their corresponding strings:
 
  - Poisson - Gamma model: "poisson"
  - Normal model with sample variance: "normal"
@@ -154,7 +150,7 @@ Independent parametric assumptions and their corresponding strings:
 
 Example code (just building the model):
 ```
-# List of keys being attribute names (without instance suffix!)
+# List of keys being attribute names (without object number suffix!)
 # and values being strings corresponding to parametric assumptions
 mixed_input_models <- list(
 	# 2 point shots made
@@ -175,7 +171,7 @@ mf_model <- match_forecast_model(
 
 ### Modeling dependent attributes with multivariate normal - inverse Wishart model
 
-Multivariate normal - inverse Wishart model jointly models all attributes of an instance.
+Multivariate normal - inverse Wishart model jointly models all attributes of an object.
 
 Example code:
 
@@ -190,55 +186,56 @@ bbm <- match_forecast_model(
 ```
 ## Advanced usage - custom models
 
-Packages uses two levels of representation for instance models. An instance model is a model of one single instance (e.g. a team). It contains attribute models which model attributes of the instance. Attribute models can be univariate or multivariate.
+Packages uses two levels of representation for object models. An object model is a model of one single object (e.g. a team). It contains attribute models which model attributes of the object. Attribute models can be univariate or multivariate.
 
-Instance model structure is defined by the package. In order to make a custom model, one needs to create an instance of 'instance_model' and fill it with custom attribute models.
+Object model structure is defined by the package. In order to make a custom model, one needs to create an instance of 'object_model' and fill it with custom attribute models.
 
 ### Building a custom model
 
-To write a custom model, a function needs to be passed in as the `input_model_specification`. As arguments it receives data from a single instance and `num_models` parameter. It should return a list of length `num_models` of objects of class 'instance_model'. One 'instance_model' represents a single model fit to the instance. It contains parameter `models`, which is a list of key-value pairs. Keys correspond to attributes and values to corresponding attribute models (e.g. of type "poisson").
+To write a custom model, a function needs to be passed in as the `input_model_specification`. As arguments it receives data from a single object and `num_models` parameter. It should return a list of length `num_models` of instances of class 'object_model'. One 'object_model' represents a single model fit to the object. It contains parameter `models`, which is a list of key-value pairs. Keys correspond to attributes and values to corresponding attribute models (e.g. of type "poisson").
 
-Constructor for the class 'instance_model':
+Constructor for the class 'object_model':
 ```
-instance_model <- function() {
+object_model <- function() {
   return(
     structure(
       list(
         models = list()
       ),
-      class = "instance_model"
+      class = "object_model"
     )
   )
 }
-# Methods defined for the class 'instance_model'
+# Methods defined for the class 'object_model'
 add_model <- function(obj, name, model)
 {
   UseMethod("add_model", obj)
 }
 
-# Adds an attribute model with a specific name to the models attribute of 'instance_model'
-add_model.instance_model <- function(inst_model, name, model) {
-  inst_model$models[[name]] <- model
-  return(inst_model)
+# Adds an attribute model with a specific name to the models attribute of 'object_model'
+add_model.object_model <- function(obj_model, name, model) {
+  obj_model$models[[name]] <- model
+  return(obj_model)
 }
 
+
 # Get a vector of means of the attribute models
-mean.instance_model <- function(inst_model) {
-  return(lapply(inst_model$models, mean))
+mean.object_model <- function(obj_model) {
+  return(lapply(obj_model$models, mean))
 }
 
 # Get a vector representing a sample from the attribute models
-sample.instance_model <- function() {
+sample.object_model <- function(obj_model) {
   return(lapply(inst_model$models, sample))
 }
 
 # Get vector of variances of the attribute models
-var.instance_model <- function() {
-  return(lapply(inst_model$models, var))
+var.object_model <- function(obj_model) {
+  return(lapply(obj_model$models, var))
 }
 ```
 
-To write a custom model one needs to create an instance of class 'instance_model' and fill its `models` parameter with custom attribute models. Each of the attribute models inside the `models` parameter should support `mean`, `var` and `sample` methods. For an example on how to write an attribute model refer to the source code of existing attribute models (Poisson - Gamma model, Normal model with sample variance etc.).
+To write a custom model one needs to create an instance of class 'object_model' and fill its `models` parameter with custom attribute models. Each of the attribute models inside the `models` parameter should support `mean`, `var` and `sample` methods. For an example on how to write an attribute model refer to the source code of existing attribute models (Poisson - Gamma model, Normal model with sample variance etc.).
 
 Example code for the Poisson - Gamma attribute model (already supported by the package):
 
@@ -297,7 +294,6 @@ var.poisson <- function(model) {
   return(model$rate)
 }
 ```
-
 
 
 

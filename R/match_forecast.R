@@ -12,13 +12,13 @@
 #'
 #' @export
 #'
-#' @param data \code{data.frame} or \code{data.table} in \strong{event-instance}
-#'   format required by this package (also see details below). Columns have to
-#'   include instance ID's in the format: \strong{ID_<number>} and attributes in
+#' @param data \code{data.frame} in \strong{match-objects}
+#'   format required by this package. Columns have to
+#'   include object ID's in the format: \strong{ID_<number>} and attributes in
 #'   the format \strong{<attr_name>_<number>}. <number> suffix connects
-#'   instances to attributes. The suffixed number of corresponding instance and
+#'   objects to attributes. The suffixed number of corresponding object and
 #'   attributes should be the same. Column for the outcome (dependant variable)
-#'   of the event needs to be denoted with \strong{y}. It can also include an
+#'   of the match should be denoted with \strong{y}. It can also include an
 #'   attribute \strong{TIME}.
 #'
 #'   An example of the columns for basketball data:
@@ -29,11 +29,11 @@
 #'   attributes of the home team. ID_2 refers to the ID of away team and P2M_2, P3M_2 to its
 #'   attributes. y is the outcome of the match.
 #'
-#' @param input_model_specification Specifies the parametric assumptions of the
-#'   attributes. We can model attributes of instances as independent with uivariate models or as
+#' @param input_model_specification Specifies the parametric assumptions of object
+#'   attributes. We can model attributes of objects as independent with uivariate models or as
 #'   dependent with multivariate models.
 #'
-#'  Currently four univariate Bayesian models are supported: \itemize{
+#'  Four univariate Bayesian models are supported out of the box: \itemize{
 #'   \item Poisson (Poisson-Gamma model), appropriate for count data,
 #'   see \code{\link{input_model_poisson}}
 #'   \item Bernoulli (Bernoulli-Beta model), appropriate for binary data,
@@ -47,63 +47,65 @@
 #'   One multivariate Bayesian model is supported:
 #'   Multivariate normal model with inverse Wishart prior for covariance matrix
 #'   (see \code{\link{input_model_mvnormal_iw}}). It is appropriate for jointly modeling numeric
-#'   attributes of instances. A custom model can also be used if a function is passed as
+#'   attributes of objects. A custom model can also be used if a function is passed as
 #'    \code{input_model_specification} parameter. See the source code of other input models
 #'    for an example of how to write a custom model.
 #'
 #'   \strong{How to invoke the models described above?}
 #'   For independent Bayesian models a string or a list should be passed in as
 #'   \code{input_model_specification} parameter. If it is a string, all attributes have the
-#'   same parametric assumption. If it is a list, the keys need to correspond to
+#'   same parametric assumption. If it is a list, the keys should correspond to
 #'   columns (attributes) and values to parametric assumptions. If a list of
-#'   name value pairs is used, different attributes can have different
+#'   name-value pairs is used, different attributes can have different
 #'   parametric assumptions. The strings corresponding to supported parametric assumptions described
 #'   above are 'poisson', 'bernoulli', 'normal', 'normal_ig'. Multivariate normal model with
 #'   inverse Wishart prior is invoked by passing in
 #'   \code{input_model_specification = list(dependent = T, type = "mvnormal_iw")}.
 #'   See examples below and input models linked above for more details.
 #'
-#' @param num_models Number of distributions to obtain per attribute. Also matches the
+#' @param num_models Number of models (distributions) to obtain per attribute. Also matches the
 #'   number of resulting bagged ML models, since each bagged model is obtained on
 #'   one set of distributions.
 #' @param transformation Specifies how attribute distributions are transformed
 #'   into actual features being fed into ML algorithm. For each of the parametric assumptions
 #'   mentioned above mean transformation is supported out of the box. It is invoked by
 #'   passing \code{transformation = "means"} as parameter. A custom function can also be
-#'   passed in. In this case it gets called for every instance with a list of distributions
-#'   that were fitted to instance attributes by the package. See the source code of
-#'   \code{\link{transform_data}} for more information.
+#'   passed in. In this case it gets called for every object with a list of distributions
+#'   that were fitted to object's attributes by the package. See the source code of
+#'   \code{\link{object_model}} and \code{\link{transformation_means}} for more information.
 #' @param weighting Optional parameter. A function that uses the \strong{TIME} attribute if
-#'   present to weight the prior events by importance when obtaining attribute
+#'   present to weight the prior matches by importance when obtaining attribute
 #'   distributions.
-#' @param get_model Function that takes as input a dataset generated by
-#'   \code{transformation} function and returns a ML model built using this
-#'   dataset. The ML model returned needs to support the standard predict()
+#' @param get_model Function that should build a ML model on one of \code{num_models} datasets
+#'  generated by the package. It receives match data with features of objects that are the output of
+#'  \code{transformation} function. The ML model returned needs to support the standard predict()
 #'   notation.
 #' @param priors Optional parameter. Specifies conjugate priors for supported Bayesian models.
-#' List of lists, one for each instance. Keys in the outer list correspond to instance id's.
-#' The values in the outer list correspond to specifications of prior distributions of attributes.
-#' The values in the inner lists depend on the parametric assumption used. See the
-#' documentation of supported parametric models for details on how to specify priors.
+#' List of lists, one for each object. Names in the outer list correspond to object ID's.
+#' The values in the outer lists are lists with names corresponding to attributes and values
+#' to specifications of parameters of attribute prior distributions. The values in the inner lists
+#' depend on the parametric assumption used. See the documentation of supported parametric assumptions
+#' (e.g. \code{\link{input_model_poisson}}) for details on how to specify priors and examples below
+#' on how to use them.
 #' @param report_time Boolean denoting whether to report the execution time. Default is \code{FALSE}.
 #' @return Structure of class \code{match_forecast_model} containing
 #'   properties:
 #'   \itemize{
-#'   \item models: list of length \code{num_models} with each entry being one of the bagged
-#'   models
-#'   \item data: data passed to input parameter (to be used to calculate distributions of
-#'   attributes of test instances
-#'   \item some other implicit parameters to avoid repetition
+#'   \item first_level_model: list with keys being instance ID's and values corresponding first level
+#'   object models
+#'   \item second_level_model: list of length \code{num_models} with each entry being one of the bagged
+#'   predictive models
+#'   \item some other implicit parameters (inspect the object for more info)
 #'   }
 #' @example R/examples/example_match_forecast_model.R
 match_forecast_model <- function(data,
-                                    input_model_specification,
-                                    num_models,
-                                    transformation = NULL,
-                                    weighting = NULL,
-                                    get_model,
-                                    priors = NULL,
-                                    report_time = F) {
+                                 input_model_specification,
+                                 num_models,
+                                 transformation = NULL,
+                                 weighting = NULL,
+                                 get_model,
+                                 priors = NULL,
+                                 report_time = F) {
   start_time <- Sys.time()
 
   transformation_function <- get_transformation(transformation)
@@ -124,7 +126,7 @@ match_forecast_model <- function(data,
 
   data_specification[["cols_measurements_suffixed"]] <- cols_measurements_suffixed
 
-  data_modeled <- model_inputs(
+  first_level_model <- model_first_level(
     data,
     data,
     input_model_specification,
@@ -134,23 +136,23 @@ match_forecast_model <- function(data,
     data_specification
   )
 
-  models <- list()
+  second_level_model <- list()
   for (i in 1:num_models) {
-    data_modeled_current <- extract_model_data(data_modeled, i)
-    data_modeled_current <- transformation_function(data_modeled_current)
-    data_modeled_current <- data.frame(matrix(unlist(data_modeled_current), nrow = length(data_modeled_current), byrow = T))
-    data_modeled_current <- reformat_to_df(data_modeled_current, data_specification)
-    models[[i]] <- get_model(data_modeled_current)
+    data_train_current <- build_dataset_from_fl_model(data, data_specification, first_level_model, i, transformation_function)
+    second_level_model[[i]] <- get_model(data_train_current)
   }
 
   model <- structure(
     list(
-      models = models,
+      first_level_model = first_level_model,
+      second_level_model = second_level_model,
       input_model_specification = input_model_specification,
+      num_models_train = num_models,
       data = data,
       priors = priors,
       transformation_function = transformation_function,
-      data_specification = data_specification
+      data_specification = data_specification,
+      weighting_train = weighting
     ),
     class = "match_forecast_model"
   )
@@ -164,78 +166,83 @@ match_forecast_model <- function(data,
 #' predict.match_forecast_model
 #'
 #' Predict function for the match_forecast_model. Predicts the outcome for test
-#' events using each of the bagged models built with match_forecast_model.
-#' Instances from the test set modeled in the same way as instances in the train
-#' set. For each event in the test set \code{num_samples} distributions are fitted
-#' to each instance's attributes. This distribution is then transformed using the same
-#' transformation (e.g. "means") to obtain final feature vectors.
+#' matches using each of the bagged predictive models built with match_forecast_model.
+#' Unless a different \code{weighting} or \code{num_samples} is used for \code{predict}
+#' and building the match_forecast_model, the same first level model is used to
+#' construct test feature vectors.
 #'
 #' @export
 #'
-#' @param mf_model An instance of match_forecast_model
-#' @param data_new \code{data.frame} or \code{data.table} with event data
-#'  containing involved instance ID's.
+#' @param mf_model An instance of class match_forecast_model
+#' @param data_new \code{data.frame} or \code{data.table} with match data
+#'  containing involved object's ID's and possibly TIME attribute.
 #'
 #'  Example of columns for test set:
-#'  \tabular{ccc}{\tab ID_1 \tab ID_2\cr }
-#'  Note that the attributes of new events are unknown and are therefore estimated from
-#'  data used for training. If you want to calculate attributes for instances in the test
-#'  set from different data, set the \code{data} attribute of the match_forecast_model,
-#'  after building it.
-#' @param num_samples Specifies how many distributions are fitted to each
-#'  attribute of an instance.
-#' @param weighting Same as in \code{\link{match_forecast_model}}.
+#'  \tabular{ccc}{\tab TIME \tab ID_1 \tab ID_2\cr }
+#'  Note that the exact attributes of objects in new events are unknown and are therefore
+#'  estimated from data used for training.
 #' @param predict_fun Function that gets as an argument one of the bagged models and
 #' transformed test data (e.g. using "means" transformation). It should use the ML model's
 #' predict function to obtain the outcome of new events.
+#' @param num_models Optional parameter. If set, a different first level model is used for test
+#' data set. Specifies how many distributions are fitted to each attribute of an object.
+#' Analogous to \code{num_models} in \code{\link{match_forecast_model}}.
+#' @param weighting Same as in \code{\link{match_forecast_model}}.
 #' @param report_time Boolean denoting whether to report the execution time.
-#' @return List of lists of predictions. The size of the outer list is \code{num_models * num_samples},
-#' since each of the bagged models is predicting on each of the sampled test instances.
+#' @return List of lists of predictions. The size of the outer list is \code{num_models^2},
+#' since each of the bagged models is predicting on each of the generated test vectors
 #' Each prediction (inner list) contains fields:
 #'  \itemize{
-#'  \item predictions: output of predict_fun for corresponding model and sampled test instance
-#'  \item model: index of the bagged model
-#'  \item num_of_sample: index of the sampled test instance
+#'  \item predictions: output of predict_fun for corresponding model test vector
+#'  \item idx_of_bagged_model: index of the bagged model
+#'  \item idx_of_test_set: index of the test set
 #'  }
 #' @example R/examples/example_predict.R
 predict.match_forecast_model <- function(
   mf_model,
   data_new,
-  num_models,
+  num_models = NULL,
   weighting = NULL,
   predict_fun,
   report_time = F) {
   start_time <- Sys.time()
 
-  data_modeled <- model_inputs(
-    data_new,
-    mf_model$data,
-    mf_model$input_model_specification,
-    num_models,
-    weighting,
-    mf_model$priors,
-    mf_model$data_specification
-  )
+  # If we want to weight matches differently for the test set, we need to specify number of models
+  if (toString(weighting) != toString(mf_model$weighting_train) || !is.null(num_models)) {
+    num_models <- if (is.null(num_models)) mf_model$num_models_train else num_models
+    first_level_model <- model_first_level(
+      data_new,
+      mf_model$data,
+      mf_model$input_model_specification,
+      num_models,
+      if (!is.null(weighting)) weighting else mf_model$weighting_train,
+      mf_model$priors,
+      mf_model$data_specification
+    )
+  }  else {
+    first_level_model <- mf_model$first_level_model
+    num_models <- mf_model$num_models_train
+  }
 
   predictions <- NULL
   for (i in 1:num_models) {
-    data_modeled_current <- extract_model_data(data_modeled, i)
-    data_modeled_current <- mf_model$transformation_function(data_modeled_current)
-    data_modeled_current <- data.frame(
-      matrix(unlist(data_modeled_current), nrow = length(data_modeled_current), byrow = T)
+
+    data_test_current <- build_dataset_from_fl_model(
+      data_new,
+      mf_model$data_specification,
+      first_level_model,
+      i,
+      mf_model$transformation_function
     )
-    data_modeled_current <- reformat_to_df(
-      data_modeled_current,
-      mf_model$data_specification
-    )
-    for (j in 1:length(mf_model$models)) {
+
+    for (j in 1:length(mf_model$second_level_model)) {
       predictions <- c(
         predictions,
         list(
           list(
-            num_of_sample = i,
-            model = j,
-            predictions = predict_fun(mf_model$models[[j]], data_modeled_current)
+            idx_of_bagged_model = i,
+            idx_of_test_set = j,
+            predictions = predict_fun(mf_model$second_level_model[[j]], data_test_current)
           )
         )
       )
@@ -250,116 +257,70 @@ predict.match_forecast_model <- function(
 
 #' get_transformation
 #'
-#' Returns a function representing the transformation (i.e. way of obtaining
-#' feature vectors). Returns the function itself if a function
-#' is passed in as parameter. If a string is passed, it has to be one of the
-#' supported transformations (currently only "means").
+#' Returns a function representing the object transformation (i.e. way of obtaining
+#' feature vectors from first level models of objects). Returns the function itself
+#' if a function is passed in as parameter. If a string is passed, it has to be one
+#' of the supported transformations (currently only "means").
 get_transformation <- function(transformation) {
   if (typeof(transformation) == "closure") {
-    return(
-      transform_data(
-        transformation
-      )
-    )
+    return(transformation)
   }
   supported_transformations <- list(
     means = transformation_means
   )
-  if (typeof(transformation) != "character" ||
-    !transformation %in% names(supported_transformations)) {
+  if (typeof(transformation) != "character" || !transformation %in% names(supported_transformations)) {
     stop("The transformation needs to be a function or one of supported transformations.")
   }
-  return(
-    transform_data(
-      supported_transformations[[transformation]]
-    )
-  )
+  return(supported_transformations[[transformation]])
 }
 
-#' model_inputs
+#' model_first_level
 #'
-#' Samples distributions for each attribute of the instances. Modularized as
-#' function to prevent unnecessary repetition, since the same procedure is used
-#' in both \code{\link{match_forecast_model}} and
-#' \code{\link{predict.match_forecast_model}}.
-model_inputs <- function(
-                         data_to_model,
-                         data_all,
-                         input_model_specification,
-                         num_models,
-                         weighting = NULL,
-                         priors = NULL,
-                         data_specification) {
+#' Builds a first level model for objects in the data set. Result is a list of
+#' object models.
+model_first_level <- function(
+  data_to_model,
+  data_all,
+  input_model_specification,
+  num_models,
+  weighting = NULL,
+  priors = NULL,
+  data_specification) {
+
+  # dataset description object just to avoid recalculation and
+  #   reduce number of passing parameters
   cols_ids <- data_specification$cols_ids
-  cols_static <- data_specification$cols_static
   cols_measurements <- data_specification$cols_measurements
 
-  # List for optimization: save samples in case of repetition (e.g. for train data)
-  instance_fits <- list()
-
-  instance_measurements <- list()
+  object_data_modeled <- list()
   for (i in 1:nrow(data_to_model)) {
     for (j in 1:length(cols_ids)) {
-      instance_id <- data_to_model[i, ][[cols_ids[[j]]]]
-      if (is.null(instance_measurements[[instance_id]])) {
-        instance_measurements[[instance_id]] <- get_instance_measurements(
-          instance_id,
+      object_id <- data_to_model[i, ][[cols_ids[[j]]]]
+      if (is.null(object_data_modeled[[object_id]])) {
+        object_measurements <- get_object_measurements(
+          object_id,
           data_all,
           cols_ids,
           cols_measurements
         )
+
+        if (typeof(weighting) == "closure") {
+          object_measurements <- weighting(object_measurements)
+        } else if (typeof(weighting) == "character" && weighting == 'gaussian') {
+          object_measurements <- weighting_gaussian(object_measurements, 1)
+        }
+        object_measurements$TIME <- NULL
+        object_data_modeled[[object_id]] <- model_first_level_object(object_measurements, input_model_specification, num_models, priors[[object_id]])
       }
     }
   }
-
-  data_modeled <- NULL
-  instance_data_modeled <- list()
-  for (i in 1:nrow(data_to_model)) {
-    data_modeled_row <- list()
-    # Copy static columns
-    for (column in cols_static) {
-      data_modeled_row[[column]] <- data_to_model[i, ][[column]]
-    }
-
-    for (j in 1:length(cols_ids)) {
-      # Copy id columns
-      data_modeled_row[[cols_ids[[j]]]] <- data_to_model[i, ][[cols_ids[[j]]]]
-
-      instance_id <- data_to_model[i, ][[cols_ids[[j]]]]
-      if (!is.null(instance_data_modeled[[instance_id]])) {
-        data_modeled_row[[paste("instance_models_", j, sep = "")]] <- instance_data_modeled[[instance_id]]
-        next
-      }
-
-      if (is.null(weighting)) {
-        instance_measurements_weighted <- instance_measurements[[instance_id]]
-      } else if (typeof(weighting) == "closure") {
-        instance_measurements_weighted <- weighting(instance_measurements[[instance_id]])
-      } else if (weighting == "gaussian") {
-        instance_measurements_weighted <- weighting_gaussian(instance_measurements[[instance_id]], 1)
-      }
-      instance_measurements_weighted$TIME <- NULL
-
-      instance_data_modeled[[instance_id]] <- model_inputs_row(
-        instance_measurements_weighted,
-        input_model_specification,
-        num_models,
-        priors[[instance_id]]
-      )
-      data_modeled_row[[paste("instance_models_", j, sep = "")]] <- instance_data_modeled[[instance_id]]
-    }
-    data_modeled <- c(
-      data_modeled,
-      list(data_modeled_row)
-    )
-  }
-  return(data_modeled)
+  return(object_data_modeled)
 }
 
-#' model_inputs_row
+#' model_first_level_object
 #'
-#' Model the attributes of an instance (row) according to the input specification.
-model_inputs_row <- function(data, input_model_specification, num_models, prior = NULL) {
+#' Model the attributes of an object according to the input specification.
+model_first_level_object <- function(data, input_model_specification, num_models, prior = NULL) {
   # Models supported by default
   supported_models <- list(
     poisson = input_model_poisson,
@@ -396,11 +357,11 @@ model_inputs_row <- function(data, input_model_specification, num_models, prior 
     }
 
     for (i in 1:num_models) {
-      inst_model <- instance_model()
+      obj_model <- object_model()
       for (colname in colnames(data)) {
-        inst_model$models[[colname]] <- column_models[[colname]][[i]]
+        obj_model$models[[colname]] <- column_models[[colname]][[i]]
       }
-      models[[i]] <- inst_model
+      models[[i]] <- obj_model
     }
   }
   # Modeling attributes as interdependent
@@ -414,24 +375,25 @@ model_inputs_row <- function(data, input_model_specification, num_models, prior 
   return(models)
 }
 
-#' get_instance_measurements
+#' get_object_measurements
 #'
-#' Retrieves measurements of all attributes of an instance. One row denotes one event.
-get_instance_measurements <- function(instance_id, data_all, cols_ids, cols_measurements) {
-  data_instance_measurements <- data.table(matrix(ncol = length(cols_measurements) + 1, nrow = nrow(data_all)))
-  colnames(data_instance_measurements) <- c("TIME", cols_measurements)
-  for (col in colnames(data_instance_measurements)) {
-    data_instance_measurements[[col]] <- as.double(data_instance_measurements[[col]])
+#' Retrieves measurements of all attributes of an object. One row contains data with measurements
+#' for a single match.
+get_object_measurements <- function(object_id, data_all, cols_ids, cols_measurements) {
+  data_object_measurements <- data.table(matrix(ncol = length(cols_measurements) + 1, nrow = nrow(data_all)))
+  colnames(data_object_measurements) <- c("TIME", cols_measurements)
+  for (col in colnames(data_object_measurements)) {
+    data_object_measurements[[col]] <- as.double(data_object_measurements[[col]])
   }
-  data_instance_measurements[["TIME"]] <- as.integer(data_instance_measurements[["TIME"]])
+  data_object_measurements[["TIME"]] <- as.integer(data_object_measurements[["TIME"]])
 
   for (i in 1:nrow(data_all)) {
     for (j in 1:length(cols_ids)) {
-      if (instance_id == data_all[i, ][[cols_ids[[j]]]]) {
-        set(data_instance_measurements, i, "TIME", data_all[i, ][["TIME"]])
+      if (object_id == data_all[i, ][[cols_ids[[j]]]]) {
+        set(data_object_measurements, i, "TIME", data_all[i, ][["TIME"]])
         for (col_measurement in cols_measurements) {
           set(
-            data_instance_measurements,
+            data_object_measurements,
             i,
             col_measurement,
             data_all[i, ][[paste(col_measurement, "_", j, sep = "")]]
@@ -441,28 +403,41 @@ get_instance_measurements <- function(instance_id, data_all, cols_ids, cols_meas
     }
   }
 
-  return(data_instance_measurements[complete.cases(data_instance_measurements), ])
+  return(data_object_measurements[complete.cases(data_object_measurements), ])
 }
 
-#' extract_model_data
+#' build_dataset_from_fl_model
 #'
-#' Extracts all of the \code{num_of_model}-th distribution fits for all instances.
-extract_model_data <- function(data_modeled, num_of_model) {
-  model_data_extracted <- list()
-  for (i in 1:length(data_modeled)) {
-    model_data_extracted_row <- list()
-    for (attribute in names(data_modeled[[i]])) {
-      if (substr(attribute, 1, 16) != "instance_models_") {
-        # Copy static attributes
-        model_data_extracted_row[[attribute]] <- data_modeled[[i]][[attribute]]
-      } else {
-        # Get num_of_model-th instance model
-        model_data_extracted_row[[
-        paste("instance_model_", substr_right(attribute, 1), sep = "")
-        ]] <- data_modeled[[i]][[attribute]][[num_of_model]]
+#' Builds a dataset using the first level model and the transformation.
+build_dataset_from_fl_model <- function(data, data_specification, first_level_model, num_of_model, transformation_function) {
+  cols_ids <- data_specification$cols_ids
+  cols_measurements <- data_specification$cols_measurements
+  cols_static <- data_specification$cols_static
+
+  dataset_new <- list()
+  for (i in 1:nrow(data)) {
+    dataset_row <- list()
+    for (col in names(data[i, ])) {
+      dataset_row[[col]] <- data[i, col]
+    }
+    for (j in 1:length(cols_ids)) {
+      transformed_values <- transformation_function(first_level_model[[data[i, cols_ids[[j]]]]][[num_of_model]])
+      for (attr in names(transformed_values)) {
+        dataset_row[[
+          paste(attr, "_", j, sep = "")
+          ]] <- transformed_values[[attr]]
       }
     }
-    model_data_extracted[[i]] <- model_data_extracted_row
+    dataset_new[[i]] <- dataset_row
   }
-  return(model_data_extracted)
+  new_colnames <- names(dataset_new[[1]])
+  dataset_new <- data.frame(matrix(unlist(dataset_new), nrow = length(dataset_new), byrow = T))
+  colnames(dataset_new) <- new_colnames
+
+  for (col in data_specification$cols_measurements_suffixed) {
+    dataset_new[[col]] <- as.numeric(as.character(dataset_new[[col]]))
+  }
+  dataset_new$y <- as.numeric(as.character(dataset_new$y))
+
+  return(dataset_new)
 }

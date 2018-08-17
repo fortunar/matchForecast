@@ -3,7 +3,7 @@
 #' Bernoulli - Beta model. Fits \code{num_models} Bernoulli models to a numerical
 #' vector (attribute).
 #' @inheritParams input_model_poisson
-#' @param prior List containing the conjugate prior information (Beta in this
+#' @param prior List containing the conjugate prior distribution parameters (Beta in this
 #'   case). List has to contain attributes "a" and "b" being the shape prior
 #'   values.
 #' @return List of \code{num_models} S3 classes of type 'bernoulli'

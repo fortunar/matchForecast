@@ -4,8 +4,8 @@
 \alias{transformation_means}
 \title{transformation_means}
 \usage{
-transformation_means(instance_model)
+transformation_means(model)
 }
 \description{
-Extracts means from all the distributions fits to the attributes of an instance.
+Extracts means from all the distributions fits to the attributes of an object
 }

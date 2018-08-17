@@ -11,7 +11,7 @@ input_model_bernoulli(data, num_models, prior)
 
 \item{num_models}{Number of distributions to fit.}
 
-\item{prior}{List containing the conjugate prior information (Beta in this
+\item{prior}{List containing the conjugate prior distribution parameters (Beta in this
 case). List has to contain attributes "a" and "b" being the shape prior
 values.}
 }

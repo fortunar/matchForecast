@@ -7,8 +7,8 @@
 get_transformation(transformation)
 }
 \description{
-Returns a function representing the transformation (i.e. way of obtaining
-feature vectors). Returns the function itself if a function
-is passed in as parameter. If a string is passed, it has to be one of the
-supported transformations (currently only "means").
+Returns a function representing the object transformation (i.e. way of obtaining
+feature vectors from first level models of objects). Returns the function itself
+if a function is passed in as parameter. If a string is passed, it has to be one
+of the supported transformations (currently only "means").
 }

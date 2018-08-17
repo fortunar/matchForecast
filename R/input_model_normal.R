@@ -3,9 +3,9 @@
 #' Normal - sample variance model. Fits \code{num_models} normal models with
 #' variance being sample variance to a numerical vector (attribute).
 #' @inheritParams input_model_poisson
-#' @param prior List containing the parameters of the normal prior for mean.
-#' List has to contain entries "mu" and "var" being the mean and
-#' variance prior values. For example: \code{list(mu = 10, var = 2)}.
+#' @param prior List containing the parameters of the Normal prior distribution of
+#' the mean. List has to contain entries "mu" and "var" being the mean and
+#' variance parameters. For example: \code{list(mu = 10, var = 2)}.
 #' @return List of \code{num_models} S3 classes of type 'normal'.
 #'   The class 'normal' has the following methods defined: mean, sample and var.
 #' @family input models

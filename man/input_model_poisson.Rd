@@ -11,8 +11,9 @@ input_model_poisson(data, num_models, prior)
 
 \item{num_models}{Number of distributions to fit.}
 
-\item{prior}{List containing parameters of gamma prior for the rate of Poisson fits.
-List has to contain attributes "a" and "b" being the shape and rate prior values.}
+\item{prior}{List containing parameters of Gamma prior distribution for the
+rate of Poisson distribution. List has to contain attributes "a" and "b" being the
+shape and rate parameters.}
 }
 \value{
 List of \code{num_models} S3 classes of type 'poisson'

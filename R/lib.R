@@ -51,24 +51,3 @@ get_static_colnames <- function(data) {
 substr_right <- function(x, n) {
   substr(x, nchar(x) - n + 1, nchar(x))
 }
-
-#' reformat_to_df
-#'
-#' Sets column names of the newly created data frame according to the package
-#' structure. Also sets column types.
-reformat_to_df <- function(data_modeled, data_specification) {
-  ordered_column_names <- c(data_specification$cols_static)
-  for (i in 1:length(data_specification$cols_ids)) {
-    ordered_column_names <- c(ordered_column_names, paste("ID_", i, sep = ""))
-    ordered_column_names <- c(ordered_column_names, paste(data_specification$cols_measurements, "_", i, sep = ""))
-  }
-  colnames(data_modeled) <- ordered_column_names
-
-  for (col in data_specification$cols_measurements_suffixed) {
-    data_modeled[[col]] <- as.numeric(as.character(data_modeled[[col]]))
-  }
-
-  data_modeled$y <- as.numeric(as.character(data_modeled$y))
-
-  return(data_modeled)
-}

@@ -1,5 +1,5 @@
 # Builds a logistic regression model on a single sampled train data set obtained
-# from instance models by applying a transformation function (e.g. means).
+# from object models by applying a transformation function (e.g. means)
 get_model <- function(data) {
   return(glm(y ~ ., family = binomial(link = "logit"), data = data))
 }
@@ -24,7 +24,7 @@ priors_example <- list(
 
 # Builds the Match Forecast Model
 mf_model <- match_forecast_model(
-  # Data frame in event-instance format
+  # Data frame in match-object format
   data = data_train,
   # Parametric assumption about attributes
   input_model_specification = "poisson",

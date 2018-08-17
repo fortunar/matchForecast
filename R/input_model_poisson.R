@@ -4,8 +4,9 @@
 #' vector (attribute).
 #' @param data Numerical vector of data points.
 #' @param num_models Number of distributions to fit.
-#' @param prior List containing parameters of gamma prior for the rate of Poisson fits.
-#' List has to contain attributes "a" and "b" being the shape and rate prior values.
+#' @param prior List containing parameters of Gamma prior distribution for the
+#' rate of Poisson distribution. List has to contain attributes "a" and "b" being the
+#' shape and rate parameters.
 #' @return List of \code{num_models} S3 classes of type 'poisson'
 #'   The class 'poisson' has the following methods defined: mean, sample and var.
 #' @family input models
